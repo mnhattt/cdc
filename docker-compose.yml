@@ -1,0 +1,59 @@
+version: '3'
+
+services:
+  # MySQL 5.7
+  mysql:
+    image: mysql:5.7
+    platform: linux/amd64
+    ports:
+      - "3306:3306"
+    environment:
+      - MYSQL_ROOT_PASSWORD=my-secret-pw
+      - MYSQL_DATABASE=db
+      - MYSQL_USER=admin
+      - MYSQL_PASSWORD=password
+
+  # Kafka with ZooKeeper
+  zookeeper:
+    image: debezium/zookeeper:2.2
+    ports:
+      - "2181:2181"
+
+  kafka:
+    image: debezium/kafka:2.2
+    ports:
+      - "9092:9092"
+    depends_on:
+      - zookeeper
+    environment:
+      - ZOOKEEPER_CONNECT=zookeeper:2181
+
+  # Debezium MySQL connector
+  debezium:
+    image: debezium/connect:2.2
+    ports:
+      - "8083:8083"
+    depends_on:
+      - kafka
+      - mysql
+    environment:
+      - BOOTSTRAP_SERVERS=kafka:9092
+      - GROUP_ID=1
+      - CONFIG_STORAGE_TOPIC=my-connect-configs
+      - OFFSET_STORAGE_TOPIC=my-connect-offsets
+      - STATUS_STORAGE_TOPIC=my-connect-status
+      - CONFIG_STORAGE_REPLICATION_FACTOR=1
+      - OFFSET_STORAGE_REPLICATION_FACTOR=1
+      - STATUS_STORAGE_REPLICATION_FACTOR=1
+      - MYSQL_HOSTNAME=mysql
+      - MYSQL_PORT=3306
+      - MYSQL_USER=admin
+      - MYSQL_PASSWORD=password
+      - MYSQL_DATABASE=my-db
+      - MYSQL_SERVER_ID=1
+      - DATABASE_HISTORY_KAFKA_TOPIC=my-db-history
+      - PLUGIN_NAME=io.debezium.connector.mysql.MySqlConnector
+      - CONNECT_KEY_CONVERTER=org.apache.kafka.connect.json.JsonConverter
+      - CONNECT_VALUE_CONVERTER=org.apache.kafka.connect.json.JsonConverter
+      - CONNECT_INTERNAL_KEY_CONVERTER=org.apache.kafka.connect.json.JsonConverter
+      - CONNECT_INTERNAL_VALUE_CONVERTER=org.apache.kafka.connect.json.JsonConverter
